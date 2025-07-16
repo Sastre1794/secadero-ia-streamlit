@@ -49,7 +49,6 @@ with col3:
 # 4) Botón de predicción
 # —————————————————————————————
 if st.button("Calcular temperaturas"):
-    # Construir DataFrame de entrada
     entrada = pd.DataFrame([{
         'Tipo_Placa_Code': placa_code,
         'Peso Húmedo': peso_humedo,
@@ -60,16 +59,13 @@ if st.button("Calcular temperaturas"):
         **{f'Humedad piso {i}': humedades[f'piso_{i}'] for i in range(1, 11)}
     }])
 
-    # Predecir temperaturas óptimas
     z1, z2, z3 = multi_model.predict(entrada)[0]
 
-    # Mostrar resultados
     st.subheader("🌡️ Temperaturas recomendadas")
     st.metric("Zona 1 (°C)", f"{z1:.1f}")
     st.metric("Zona 2 (°C)", f"{z2:.1f}")
     st.metric("Zona 3 (°C)", f"{z3:.1f}")
 
-    # Sugerencias extra
     st.write("---")
     st.write("**Recomendaciones rápidas:**")
     st.write(f"- Zona 1: ajustar a {z1:.1f}°C")
