@@ -3,7 +3,7 @@ import pandas as pd
 import joblib
 
 # —————————————————————————————
-# 1) Carga del modelo y del encoder con joblib
+# 1) Carga del modelo y del encoder
 # —————————————————————————————
 multi_model = joblib.load('multi_model_secadero.pkl')
 le = joblib.load('label_encoder_secadero.pkl')
@@ -71,3 +71,4 @@ if st.button("Calcular temperaturas"):
     st.write(f"- Zona 1: ajustar a {z1:.1f}°C")
     st.write(f"- Zona 2: ajustar a {z2:.1f}°C")
     st.write(f"- Zona 3: ajustar a {z3:.1f}°C")
+
