@@ -53,17 +53,17 @@ X = df[["Tipo_Placa_Code"] + feature_cols[1:]]  # sustituye la columna categóri
 Y = df[target_cols]
 
 # Eliminar filas con NaN
-data = pd.concat([X, Y], axis=1).dropna()
-X_clean = data[X.columns]
-Y_clean = data[Y.columns]
+df_clean = pd.concat([X, Y], axis=1).dropna()
+X_clean = df_clean[X.columns]
+Y_clean = df_clean[Y.columns]
 
 # Entrenar modelo multisalida
 model = MultiOutputRegressor(RandomForestRegressor(n_estimators=100, random_state=42))
 model.fit(X_clean, Y_clean)
 
-# Máximos históricos de SP
+# Máximos históricos de SP (ahora sobre df_clean)
 max_sp = {
-    i: int(X_clean[f"Temperatura SP zona {i}"].max())
+    i: int(df_clean[f"Temperatura SP zona {i}"].max())
     for i in range(1, 4)
 }
 
@@ -92,9 +92,7 @@ with col3:
         hum[i] = st.number_input(f"Humedad piso {i}", min_value=0.0, format="%.3f")
 
 st.markdown("### Temperaturas actuales y de sistema")
-tsc = {}
-tec = {}
-trl = {}
+tsc, tec, trl = {}, {}, {}
 for i in range(1, 4):
     tsc[i] = st.number_input(f"Temperatura SP zona {i}", min_value=0.0, format="%.1f")
     tec[i] = st.number_input(f"Temperatura entrega {i}", min_value=0.0, format="%.1f")
@@ -135,4 +133,5 @@ if st.button("Calcular SP recomendada"):
     st.write("---")
     for i in range(1, 4):
         st.write(f"- Zona {i}: {recs[i]}°C (máx hist: {max_sp[i]}°C)")
+
 
