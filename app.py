@@ -15,7 +15,7 @@ def load_data(path="Secadero 1 automático.xlsx"):
 
 df = load_data()
 
-# Columnas que necesitamos
+# Columnas necesarias
 feature_cols = [
     "Tipo de placa",
     "Peso Húmedo",
@@ -33,48 +33,45 @@ feature_cols = [
 
 target_cols = [f"Temperatura SP zona {i}" for i in range(1, 4)]
 
-# Detectar columnas faltantes
-missing = [col for col in feature_cols + target_cols if col not in df.columns]
+# Validar columnas
+missing = [c for c in feature_cols + target_cols if c not in df.columns]
 if missing:
     st.error("Faltan las siguientes columnas en el Excel:")
-    for col in missing:
-        st.write(f"- {col}")
+    for c in missing:
+        st.write(f"- {c}")
     st.stop()
 
 # —————————————————————————————
-# 2) Entrenamiento del modelo
+# 2) Entrenamiento
 # —————————————————————————————
-# Codificar Tipo de placa
+# Codificar tipo de placa
 le = LabelEncoder()
 df["Tipo_Placa_Code"] = le.fit_transform(df["Tipo de placa"])
 
-# Preparar X e Y
-X = df[["Tipo_Placa_Code"] + feature_cols[1:]]  # sustituye la columna categórica por el código
+# Construir X e Y
+X = df[["Tipo_Placa_Code"] + [c for c in feature_cols if c != "Tipo de placa"]]
 Y = df[target_cols]
 
-# Eliminar filas con NaN
-df_clean = pd.concat([X, Y], axis=1).dropna()
-X_clean = df_clean[X.columns]
-Y_clean = df_clean[Y.columns]
+# Limpiar NaN
+data_clean = pd.concat([X, Y], axis=1).dropna()
+X_clean = data_clean[X.columns]
+Y_clean = data_clean[Y.columns]
 
 # Entrenar modelo multisalida
 model = MultiOutputRegressor(RandomForestRegressor(n_estimators=100, random_state=42))
 model.fit(X_clean, Y_clean)
 
-# Máximos históricos de SP (ahora sobre df_clean)
-max_sp = {
-    i: int(df_clean[f"Temperatura SP zona {i}"].max())
-    for i in range(1, 4)
-}
+# Máximos históricos basados en Y_clean
+max_sp = {i: int(Y_clean[f"Temperatura SP zona {i}"].max()) for i in range(1, 4)}
 
 # —————————————————————————————
 # 3) Interfaz Streamlit
 # —————————————————————————————
 st.set_page_config(page_title="Recomendador SP Secadero", layout="wide")
 st.title("🔧 Recomendador de Temperatura SP en Secadero")
-st.write("Introduce los datos del día para obtener las SP recomendadas por zona.")
+st.write("Introduce los parámetros del día para obtener las SP recomendadas por zona.")
 
-# Inputs organizados en tres columnas
+# Entradas
 col1, col2, col3 = st.columns(3)
 with col1:
     tipo = st.selectbox("Tipo de placa", le.classes_)
@@ -85,14 +82,15 @@ with col1:
     evap = st.number_input("Agua Evaporada (l/m²)", min_value=0.0, format="%.3f")
 with col2:
     velo = st.number_input("Velocidad línea (m/min)", min_value=0.0, format="%.3f")
-    st.markdown("**Humedad superficial (unidad equipo)**")
-    hum = {i: st.number_input(f"Humedad piso {i}", min_value=0.0, format="%.3f") for i in range(1, 6)}
+    st.markdown("**Humedad superficial**")
+    hum = {i: st.number_input(f"Humedad piso {i}", min_value=0.0, format="%.3f")
+           for i in range(1, 6)}
 with col3:
     for i in range(6, 11):
         hum[i] = st.number_input(f"Humedad piso {i}", min_value=0.0, format="%.3f")
 
 st.markdown("### Temperaturas actuales y de sistema")
-tsc, tec, trl = {}, {}, {}
+tsc = {}; tec = {}; trl = {}
 for i in range(1, 4):
     tsc[i] = st.number_input(f"Temperatura SP zona {i}", min_value=0.0, format="%.1f")
     tec[i] = st.number_input(f"Temperatura entrega {i}", min_value=0.0, format="%.1f")
@@ -100,7 +98,7 @@ for i in range(1, 4):
 
 # Botón de cálculo
 if st.button("Calcular SP recomendada"):
-    # Construir DataFrame de entrada
+    # Construir entrada
     entrada = {
         "Tipo_Placa_Code": code,
         "Peso Húmedo": peso,
@@ -119,19 +117,17 @@ if st.button("Calcular SP recomendada"):
     df_in = pd.DataFrame([entrada])
     preds = model.predict(df_in)[0]
 
-    # Redondear y capar por histórico
-    recs = {}
-    for idx, pred in enumerate(preds, start=1):
-        val = int(round(pred))
-        recs[idx] = min(val, max_sp[idx])
+    # Redondear y capar
+    recs = {i: min(int(round(preds[i-1])), max_sp[i]) for i in range(1, 4)}
 
     # Mostrar resultados
-    st.subheader("🌡️ Temperaturas SP recomendadas")
+    st.subheader("🌡️ SP recomendadas")
     st.metric("Zona 1 (°C)", recs[1])
     st.metric("Zona 2 (°C)", recs[2])
     st.metric("Zona 3 (°C)", recs[3])
     st.write("---")
     for i in range(1, 4):
         st.write(f"- Zona {i}: {recs[i]}°C (máx hist: {max_sp[i]}°C)")
+
 
 
