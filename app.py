@@ -3,21 +3,23 @@ import pandas as pd
 from sklearn.preprocessing import LabelEncoder
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.multioutput import MultiOutputRegressor
+from sklearn.model_selection import train_test_split
 
 # —————————————————————————————
-# 1) Cargar y entrenar modelo en caliente
+# 1) Carga y entrenamiento del modelo
 # —————————————————————————————
 @st.cache_data
 def load_and_train(path="Secadero 1 automático.xlsx"):
-    # Leemos el histórico limpio
+    # Leemos el histórico desde la hoja limpia
     df = pd.read_excel(path, sheet_name="Sheet1")
+    # Limpiamos espacios en nombres
     df.columns = df.columns.str.strip()
 
-    # Codificamos el tipo de placa
+    # Codificamos la variable categórica
     le = LabelEncoder()
     df["Tipo_Placa_Code"] = le.fit_transform(df["Tipo de placa"])
 
-    # Definimos columnas de entrada
+    # Definimos columnas de entrada (features)
     feature_cols = [
         "Tipo_Placa_Code",
         "Peso Húmedo",
@@ -26,15 +28,12 @@ def load_and_train(path="Secadero 1 automático.xlsx"):
         "Agua Evaporada",
         "Velocidad línea",
     ]
-    # Humedades pisos 1–10
     feature_cols += [f"Humedad piso {i}" for i in range(1, 11)]
-    # Temperaturas SP actuales zonas 1–3
     feature_cols += [f"Temperatura SP zona {i}" for i in range(1, 4)]
-    # Temperatura de entrega 1–3 y retorno 1–3
     feature_cols += [f"Temperatura de entrega {i}" for i in range(1, 4)]
     feature_cols += [f"Temperatura de retorno {i}" for i in range(1, 4)]
 
-    # Definimos las columnas a predecir (targets)
+    # Definimos columnas objetivo (SP recomendada)
     target_cols = [f"Temperatura SP zona {i}" for i in range(1, 4)]
 
     # Eliminamos filas con datos faltantes
@@ -49,23 +48,20 @@ def load_and_train(path="Secadero 1 automático.xlsx"):
     model.fit(X, y)
 
     # Calculamos máximos históricos de SP por zona
-    max_sp = {
-        i: int(df_clean[f"Temperatura SP zona {i}"].max())
-        for i in range(1, 4)
-    }
+    max_sp = {i: int(df_clean[f"Temperatura SP zona {i}"].max()) for i in range(1, 4)}
 
     return model, le, max_sp
 
 multi_model, le, max_sp = load_and_train()
 
 # —————————————————————————————
-# 2) Interfaz de usuario
+# 2) Interfaz de usuario en Streamlit
 # —————————————————————————————
-st.set_page_config(page_title="Recomendador de SP Secadero", layout="wide")
+st.set_page_config(page_title="Recomendador SP Secadero", layout="wide")
 st.title("🔧 Recomendador de Temperatura SP en Secadero")
-st.write("Introduce los datos del día para obtener las **Temperaturas SP** idealmente ajustadas.")
+st.write("Ingresa los datos del día para obtener las **Temperaturas SP** recomendadas para cada zona.")
 
-# Disposición en tres columnas
+# Disposición en columnas
 col1, col2, col3 = st.columns(3)
 
 with col1:
@@ -78,7 +74,7 @@ with col1:
 
 with col2:
     velo = st.number_input("Velocidad línea (m/min)", min_value=0.0, format="%.3f")
-    st.markdown("**Humedad superficial (unidades equipo)**")
+    st.markdown("**Humedad superficial (unidad equipo)**")
     hum = {i: st.number_input(f"Humedad piso {i}", min_value=0.0, format="%.3f")
            for i in range(1, 6)}
 
@@ -86,7 +82,6 @@ with col3:
     for i in range(6, 11):
         hum[i] = st.number_input(f"Humedad piso {i}", min_value=0.0, format="%.3f")
 
-# SP actuales, entrega y retorno
 st.markdown("### Temperaturas actuales y de sistema")
 tsc = {}
 tec = {}
@@ -96,9 +91,9 @@ for i in range(1, 4):
     tec[i] = st.number_input(f"Temperatura de entrega {i}", min_value=0.0, format="%.1f")
     trl[i] = st.number_input(f"Temperatura de retorno {i}", min_value=0.0, format="%.1f")
 
-# Botón de predicción
+# Botón de cálculo
 if st.button("Calcular SP recomendada"):
-    # Construimos el DataFrame de entrada
+    # Preparamos el dataframe de entrada
     data = {
         "Tipo_Placa_Code": code,
         "Peso Húmedo": peso,
@@ -117,11 +112,11 @@ if st.button("Calcular SP recomendada"):
     df_in = pd.DataFrame([data])
     preds = multi_model.predict(df_in)[0]
 
-    # Redondeamos, convertimos a entero y capamos por el máximo histórico
+    # Redondeamos al entero y capamos por el histórico
     recs = {}
-    for i, pred in enumerate(preds, start=1):
+    for idx, pred in enumerate(preds, start=1):
         val = int(round(pred))
-        recs[i] = min(val, max_sp[i])
+        recs[idx] = min(val, max_sp[idx])
 
     # Mostramos resultados
     st.subheader("🌡️ Temperaturas SP recomendadas")
@@ -130,8 +125,7 @@ if st.button("Calcular SP recomendada"):
     st.metric("Zona 3 (°C)", recs[3])
 
     st.write("---")
-    st.write("**Valores finales (enteros y capados a histórico máximo):**")
-    st.write(f"- Zona 1: {recs[1]}°C (máx. hist.: {max_sp[1]}°C)")
-    st.write(f"- Zona 2: {recs[2]}°C (máx. hist.: {max_sp[2]}°C)")
-    st.write(f"- Zona 3: {recs[3]}°C (máx. hist.: {max_sp[3]}°C)")
+    st.write("**Detalle de valores (enteros y capados):**")
+    for i in range(1, 4):
+        st.write(f"- Zona {i}: {recs[i]}°C (máx. hist.: {max_sp[i]}°C)")
 
