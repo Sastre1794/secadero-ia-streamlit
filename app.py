@@ -50,7 +50,7 @@ model, le, max_sp, hist_means = load_and_train()
 # Explicación: SP recomendado se ajusta para optimizar la humedad de la placa según histórico.
 # A continuación, pedimos los datos actuales del día.
 
-st.title("Secadero IA - Recomendación Temperaturas SP")
+st.title("Recomendación Temperaturas SP Por Héctor Sastre")
 
 placas_disponibles = list(le.classes_)
 placa = st.selectbox("Tipo de placa", placas_disponibles)
@@ -94,7 +94,7 @@ if st.button("Calcular Temperaturas Recomendadas"):
             sp_pred = max_sp[i]
         resultados[f"Zona {i}"] = sp_pred
 
-    st.subheader("Temperaturas SP recomendadas (sin superar máximos históricos):")
+    st.subheader("Temperaturas SP recomendadas:")
     for zona, valor in resultados.items():
         st.write(f"{zona}: {valor} °C")
 
