@@ -10,7 +10,7 @@ st.title("Recomendador Inteligente de Temperaturas SP por Zona")
 
 @st.cache_data
 def load_and_train():
-    df = pd.read_excel("/mnt/data/Secadero 1 automático.xlsx")
+    df = pd.read_excel("Secadero 1 automático.xlsx")
 
     columnas_entrada = [
         "Tipo de placa", "Peso Húmedo", "Agua", "Yeso", "Agua Evaporada",
@@ -84,3 +84,4 @@ if st.button("Calcular Temperaturas SP Recomendadas"):
     st.info("""
     Explicación: La recomendación ajusta ligeramente las temperaturas según la diferencia promedio de humedad respecto a los históricos, asegurando no superar los máximos históricos.
     """)
+
