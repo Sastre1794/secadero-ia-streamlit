@@ -1,92 +1,86 @@
 import streamlit as st
 import pandas as pd
-from sklearn.preprocessing import LabelEncoder
-from sklearn.ensemble import GradientBoostingRegressor
+from sklearn.ensemble import RandomForestRegressor
 from sklearn.multioutput import MultiOutputRegressor
+from sklearn.preprocessing import LabelEncoder
+
+st.set_page_config(page_title="Secadero IA - Recomendador SP", layout="centered")
+
+st.title("Recomendador Inteligente de Temperaturas SP por Zona")
 
 @st.cache_data
 def load_and_train():
-    df = pd.read_excel('Secadero 1 automático.xlsx')
+    df = pd.read_excel("/mnt/data/Secadero 1 automÃ¡tico.xlsx")
 
-    # Definir columnas
-    hist_cols = [f"Humedad historica piso {i}" for i in range(1, 11)]
-    actual_cols = [f"Humedad piso {i}" for i in range(1, 11)]
-    target_cols = [f"SP_actual zona {i}" for i in range(1, 4)]
-    other_feats = [
-        "Peso Húmedo", "Agua ", "Yeso", "Agua Evaporada",
+    columnas_entrada = [
+        "Tipo de placa", "Peso Húmedo", "Agua", "Yeso", "Agua Evaporada",
         "Temperatura entrega 1", "Temperatura entrega 2", "Temperatura entrega 3",
         "Temperatura retorno 1", "Temperatura retorno 2", "Temperatura retorno 3",
-        "Velocidad línea"
+        "SP_actual zona 1", "SP_actual zona 2", "SP_actual zona 3",
+        "Velocidad línea",
+        "Humedad piso 1", "Humedad piso 2", "Humedad piso 3", "Humedad piso 4", "Humedad piso 5",
+        "Humedad piso 6", "Humedad piso 7", "Humedad piso 8", "Humedad piso 9", "Humedad piso 10"
     ]
 
-    df = df.dropna(subset=["Tipo de placa"] + hist_cols + actual_cols + target_cols + other_feats)
+    target_cols = ["SP_actual zona 1", "SP_actual zona 2", "SP_actual zona 3"]
+    hist_cols = [f"Humedad historica piso {i}" for i in range(1, 11)]
 
-    # Label encoding para tipo de placa
-    le = LabelEncoder()
-    df["Tipo de placa"] = le.fit_transform(df["Tipo de placa"])
+    other_feats = [col for col in columnas_entrada if col not in target_cols and not col.startswith("Humedad piso")]
+    humedad_cols = [f"Humedad piso {i}" for i in range(1, 11)]
 
-    X = df[["Tipo de placa"] + other_feats + actual_cols]
+    all_required = other_feats + humedad_cols + hist_cols + target_cols
+    df = df.dropna(subset=all_required)
+
+    X = df[other_feats + humedad_cols]
     Y = df[target_cols]
 
-    # Guardar máximos históricos
-    max_sp = {i: int(Y[f"SP_actual zona {i}"].max()) for i in range(1, 4)}
+    le = LabelEncoder()
+    X.loc[:, "Tipo de placa"] = le.fit_transform(X["Tipo de placa"])
 
-    # Media histórica por piso
     hist_means = df[hist_cols].mean()
+    max_sp = {i: int(df[f"SP_actual zona {i}"].max()) for i in range(1,4)}
 
-    # Modelo más suave
-    model = MultiOutputRegressor(GradientBoostingRegressor(n_estimators=200, learning_rate=0.05, random_state=42))
+    model = MultiOutputRegressor(RandomForestRegressor(n_estimators=200, random_state=42))
     model.fit(X, Y)
 
-    return model, le, max_sp, hist_means, X.columns.tolist()
+    return model, le, max_sp, hist_means, other_feats, humedad_cols
 
-model, le, max_sp, hist_means, feature_cols = load_and_train()
+model, le, max_sp, hist_means, other_feats, humedad_cols = load_and_train()
 
-st.title("Recomendador de Temperaturas SP para Secadero Por Héctor Sastre")
+st.header("Introduce los datos actuales")
 
+input_data = {}
+
+# Tipo placa
 placa = st.selectbox("Tipo de placa", le.classes_)
+input_data["Tipo de placa"] = le.transform([placa])[0]
 
-inputs = {}
-for col in ["Peso Húmedo", "Agua ", "Yeso", "Agua Evaporada",
-             "Temperatura entrega 1", "Temperatura entrega 2", "Temperatura entrega 3",
-             "Temperatura retorno 1", "Temperatura retorno 2", "Temperatura retorno 3",
-             "SP_actual zona 1", "SP_actual zona 2", "SP_actual zona 3",
-             "Velocidad línea"]:
-    inputs[col] = st.number_input(col, step=1.0)
+# Datos numéricos
+for col in other_feats:
+    if col != "Tipo de placa":
+        input_data[col] = st.number_input(col, step=1.0, format="%.2f")
 
-humedades = []
-for i in range(1, 11):
-    humedades.append(st.number_input(f"Humedad piso {i}", step=0.1))
+# Humedades actuales
+for col in humedad_cols:
+    input_data[col] = st.number_input(col, step=0.1, format="%.2f")
 
 if st.button("Calcular Temperaturas SP Recomendadas"):
-    df_in = pd.DataFrame([{**inputs, "Tipo de placa": le.transform([placa])[0], **{f"Humedad piso {i+1}": humedades[i] for i in range(10)}}])
+    df_in = pd.DataFrame([input_data])
 
-    # Ajuste moderado por diferencia de humedades
-    diferencia_humedad = sum([humedades[i] - hist_means.iloc[i] for i in range(10)]) / 10
-    ajuste_global = max(min(diferencia_humedad * 2, 10), -10)
+    # Calcular diferencia humedad
+    humedad_actual = df_in[humedad_cols].values.flatten()
+    humedad_objetivo = hist_means.values.flatten()
+    dif_humedad = (humedad_actual - humedad_objetivo).mean()
 
     preds = model.predict(df_in)[0]
-    recomendaciones = {}
-    explicaciones = []
 
-    for i in range(1, 4):
-        sp_actual = inputs[f"SP_actual zona {i}"]
-        base_pred = preds[i-1] + ajuste_global
-        recomendado = min(int(round(base_pred)), max_sp[i])
-        recomendaciones[i] = recomendado
+    ajuste = dif_humedad * 1.5  # más suave
+    preds = [min(int(pred - ajuste), max_sp[i+1]) for i, pred in enumerate(preds)]
 
-        diff = recomendado - sp_actual
-        razon = ""
-        if diff > 2:
-            razon = f"Aumenta +{diff} grados porque la humedad actual es significativamente mayor que la histórica."
-        elif diff < -2:
-            razon = f"Reduce {abs(diff)} grados porque la humedad actual es bastante inferior a la histórica."
-        else:
-            razon = "Sin cambios bruscos; la humedad es estable respecto a la histórica."
+    st.subheader("Temperaturas SP Recomendadas")
+    for i, sp in enumerate(preds, start=1):
+        st.write(f"Zona {i}: {sp} ºC")
 
-        explicaciones.append(f"Zona {i}: {razon}")
-
-    st.subheader("Resultados")
-    for i in range(1, 4):
-        st.write(f"Zona {i} - SP Recomendado: {recomendaciones[i]} °C")
-        st.caption(explicaciones[i-1])
+    st.info("""
+    Explicación: La recomendación ajusta ligeramente las temperaturas según la diferencia promedio de humedad respecto a los históricos, asegurando no superar los máximos históricos.
+    """)
