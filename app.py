@@ -39,20 +39,20 @@ def load_and_train():
 
 model, le, max_sp, hist_means = load_and_train()
 
-st.title("Recomendador de Temperaturas SP - Secadero")
+st.title("Recomendador de Temperaturas Secadero Por Héctor Sastre")
 
 placa = st.selectbox("Tipo de placa", le.classes_)
-peso = st.number_input("Peso Húmedo", min_value=0.0)
-agua = st.number_input("Agua", min_value=0.0)
-yeso = st.number_input("Yeso", min_value=0.0)
-evaporada = st.number_input("Agua Evaporada", min_value=0.0)
-velocidad = st.number_input("Velocidad Línea", min_value=0.0)
+peso = st.number_input("Peso Húmedo", min_value=0.000)
+agua = st.number_input("Agua", min_value=0)
+yeso = st.number_input("Yeso", min_value=0)
+evaporada = st.number_input("Agua Evaporada", min_value=0.000)
+velocidad = st.number_input("Velocidad Línea", min_value=0)
 
-entregas = [st.number_input(f"Temperatura entrega {i}", min_value=0.0) for i in range(1, 4)]
-retornos = [st.number_input(f"Temperatura retorno {i}", min_value=0.0) for i in range(1, 4)]
+entregas = [st.number_input(f"Temperatura entrega {i}", min_value=0) for i in range(1, 4)]
+retornos = [st.number_input(f"Temperatura retorno {i}", min_value=0) for i in range(1, 4)]
 humedades = [st.number_input(f"Humedad piso {i}", min_value=0.0) for i in range(1, 11)]
 
-if st.button("Calcular SP Recomendadas"):
+if st.button("Calcular Temperaturas Recomendadas"):
     hist_media = hist_means
     placa_encoded = le.transform([placa])[0]
     
