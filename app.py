@@ -47,7 +47,10 @@ def load_and_train():
 
 model, le, max_sp, hist_means = load_and_train()
 
-st.title("Programa Secadero Héctor Sastre - Recomendación Temperaturas")
+# Explicación: SP recomendado se ajusta para optimizar la humedad de la placa según histórico.
+# A continuación, pedimos los datos actuales del día.
+
+st.title("Secadero IA - Recomendación Temperaturas SP")
 
 placas_disponibles = list(le.classes_)
 placa = st.selectbox("Tipo de placa", placas_disponibles)
@@ -94,3 +97,27 @@ if st.button("Calcular Temperaturas Recomendadas"):
     st.subheader("Temperaturas SP recomendadas (sin superar máximos históricos):")
     for zona, valor in resultados.items():
         st.write(f"{zona}: {valor} °C")
+
+        # Explicación del resultado
+    st.markdown("---")
+    st.subheader("Explicación detallada por zona:")
+    for i in range(1, 4):
+        actual = sp_actual[i-1]
+        reco = resultados[f"Zona {i}"]
+        diff = reco - actual
+        if diff > 0:
+            reason = (
+                "La SP recomendada es más alta que la actual, lo que ayudará a incrementar la evaporación "
+                "en la Zona " + str(i) + ", reduciendo la humedad superficial más rápido y evitando posibles arquements de la placa."
+            )
+        elif diff < 0:
+            reason = (
+                "La SP recomendada es menor que la actual en la Zona " + str(i) + ", para evitar sobresecado "
+                "y daños en los bordes, reduciendo el riesgo de desprendimiento del cartón."
+            )
+        else:
+            reason = (
+                "La SP recomendada coincide con la actual en la Zona " + str(i) + ", indica que las condiciones actuales "
+                "son óptimas según el histórico y no requieren ajuste."
+            )
+        st.write(f"**Zona {i}:** {reason}")
