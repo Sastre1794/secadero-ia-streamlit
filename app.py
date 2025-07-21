@@ -4,13 +4,13 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.multioutput import MultiOutputRegressor
 from sklearn.preprocessing import LabelEncoder
 
-st.set_page_config(page_title="Secadero IA - Recomendador SP", layout="centered")
+st.set_page_config(page_title="Secadero IA - Recomendador SP Por Héctor Sastre", layout="centered")
 
 st.title("Recomendador Inteligente de Temperaturas SP por Zona")
 
 @st.cache_data
 def load_and_train():
-    df = pd.read_excel("/mnt/data/Secadero 1 automÃ¡tico.xlsx")
+    df = pd.read_excel("/mnt/data/Secadero 1 automático.xlsx")
 
     columnas_entrada = [
         "Tipo de placa", "Peso Húmedo", "Agua", "Yeso", "Agua Evaporada",
