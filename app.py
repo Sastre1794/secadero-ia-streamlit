@@ -114,3 +114,4 @@ if st.button("Calcular SP Recomendadas"):
         "La SP recomendada ajusta según la desviación media de humedad vs histórica, "
         "manteniendo SP dentro de límites históricos y mostrando la variación respecto al valor actual."
     )
+
