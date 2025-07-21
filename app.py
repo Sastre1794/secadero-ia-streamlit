@@ -47,7 +47,7 @@ def load_and_train():
 
 model, le, max_sp, hist_means = load_and_train()
 
-st.title("Secadero IA - Recomendación Temperaturas SP")
+st.title("Programa Secadero Héctor Sastre - Recomendación Temperaturas")
 
 placas_disponibles = list(le.classes_)
 placa = st.selectbox("Tipo de placa", placas_disponibles)
