@@ -121,3 +121,6 @@ if st.button("Calcular Temperaturas Recomendadas"):
                 "son óptimas según el histórico y no requieren ajuste."
             )
         st.write(f"**Zona {i}:** {reason}")
+
+            )
+        st.write(f"**Zona {i}:** {reason}")
